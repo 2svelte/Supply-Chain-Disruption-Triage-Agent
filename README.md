@@ -1,22 +1,57 @@
-# Supply-Chain-Disruption-Triage-Agent
-Automated supply chain disruption triage agent that calculates stockout risks, models SLA penalty trade-offs, and generates emergency purchase orders.
-
 # Supply Chain Disruption Triage Agent
-**Automating Decision Latency in Inbound Freight Disruption & Mitigation**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR_STREAMLIT_APP_URL_HERE)
+A lightweight Streamlit showcase for reducing decision latency when inbound freight is delayed. It combines deterministic inventory and financial analysis with optional AI-assisted emergency PO drafting.
 
-## The Problem
-When inbound container freight is delayed, supply chain planners spend hours manually cross-referencing shipping ETAs, warehouse burn rates, and supplier lead times. This manual analysis latency frequently results in assembly line shutdowns and costly contractual SLA breach penalties before backup parts can be secured.
+## Business workflow
 
-## The Solution
-This tool automates the entire disruption-to-resolution loop in under 30 seconds:
-1. **Deterministic Risk Scoring:** Monitors inbound shipment delays against real-time facility inventory burn rates to pinpoint the exact stockout date ($Runout < ETA$).
-2. **Cost-to-Resolve Modeling:** Evaluates the trade-off between the cost of inaction (contractual SLA downtime penalties) and the cost of resolution (emergency backup vendor unit premiums and expedited freight fees).
-3. **Automated PO Generation:** Utilizes an LLM agent to instantly draft a binding, audit-ready Emergency Purchase Order with pre-calculated shortfall quantities and hard-stop delivery dates.
+1. Read the local shipment, inventory, and backup-vendor workbooks.
+2. Identify delayed inbound shipments.
+3. Calculate days of supply, estimated stockout date, coverage gap, shortfall units, SLA penalty, expedite cost, and projected net savings.
+4. Prioritize the disruption and recommend monitoring, expediting, or further review.
+5. Draft an emergency PO email from the calculated facts. The LLM formats the decision; it does not calculate or invent the numbers.
+6. Download or approve the draft for demonstration. No external order, ERP update, or email is sent.
 
-## Tech Stack
-- **Interface:** Streamlit
-- **Analytics & Logic:** Python (Pandas, Datetime)
-- **Agent Orchestration:** OpenAI API (`gpt-4o-mini`)
-- **Data Engine:** Relational tracking schemas (Inbound Freight, Inventory Status, Backup Suppliers)
+## Run locally
+
+```powershell
+py -3 -m pip install -r requirements.txt
+py -3 -m streamlit run app.py
+```
+
+The dashboard works without an OpenAI key. To enable AI-written wording, add a rotated key to `.streamlit/secrets.toml`:
+
+```toml
+OPENAI_API_KEY = "your-rotated-key"
+```
+
+Never commit this file or reuse a key that has appeared in source control or screenshots. The included `.gitignore` excludes it.
+
+## Workbook contract
+
+The app expects these files under `data/`:
+
+- `shipments.xlsx`: `status`, `sku`, `original_eta`, `revised_eta`, `po_number`, `vessel_id`, `destination_port`
+- `inventory.xlsx`: `sku`, `part_name`, `facility_location`, `current_stock`, `daily_burn_rate`, `sla_penalty_per_day`
+- `backup_vendors.xlsx`: `sku`, `vendor_name`, `contact_email`, `unit_cost`, `expedite_shipping_flat_fee`, `lead_time_days`
+
+Each delayed shipment must have exactly one matching inventory record and one approved backup-vendor record.
+
+## Calculation assumptions
+
+- The current inventory runway is anchored to the shipment's original ETA, matching the supplied demonstration data.
+- `days_of_supply = floor(current_stock / daily_burn_rate)`.
+- A shipment is critical when the revised ETA is later than the calculated stockout date.
+- `shortfall_units = coverage_gap_days * daily_burn_rate`.
+- `total_expedite_cost = shortfall_units * unit_cost + expedited freight fee`.
+- `projected net savings = SLA penalty - total expedite cost`.
+- A backup vendor is considered time-feasible when its lead time is no longer than the available inventory runway.
+
+The deterministic engine validates columns, dates, numeric values, duplicate matches, missing matches, zero burn rates, and empty delay results.
+
+## Example result
+
+The supplied workbooks contain a four-day delay for `PO-9021`. The engine calculates three days of supply, a stockout on `2026-10-08`, a one-day coverage gap, 150 backup units, $12,000 in estimated SLA exposure, $10,250 in expedite cost, and $1,750 in projected net savings.
+
+## Scope
+
+This is intentionally a portfolio-scale analyst tool using static Excel inputs. It does not include a database, authentication, real-time vessel tracking, ERP write-back, email delivery, or real purchase-order submission.
