@@ -1,7 +1,7 @@
 # Supply-Chain-Disruption-Triage-Agent
 Automated supply chain disruption triage agent that calculates stockout risks, models SLA penalty trade-offs, and generates emergency purchase orders.
 
-# 🚢 Supply Chain Disruption Triage Agent
+# Supply Chain Disruption Triage Agent
 **Automating Decision Latency in Inbound Freight Disruption & Mitigation**
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](YOUR_STREAMLIT_APP_URL_HERE)
